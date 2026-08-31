@@ -1,0 +1,12 @@
+
+{% extends "base.html" %}{% block heading %}Dashboard{% endblock %}{% block content %}
+<div class="cards">
+{% for label,value in [('Active Projects',stats.projects),('Work Orders',stats.work_orders),('Active Vendors',stats.vendors),('Employees',stats.employees)] %}
+<div class="card"><span>{{label}}</span><strong>{{value}}</strong></div>{% endfor %}
+<div class="card"><span>Stock Value</span><strong>₹{{"{:,.0f}".format(stats.stock_value)}}</strong></div>
+<div class="card"><span>Total Expenses</span><strong>₹{{"{:,.0f}".format(stats.expenses)}}</strong></div>
+<div class="card"><span>Pending Bills</span><strong>₹{{"{:,.0f}".format(stats.pending_bills)}}</strong></div>
+<div class="card"><span>Total Payments</span><strong>₹{{"{:,.0f}".format(stats.payments)}}</strong></div></div>
+<div class="panel"><h2>ERP Workflow</h2><div class="flow">Company → Office / Division → Project → Site → Work Order → BOQ → Execution → Measurement → Bill → Payment</div></div>
+<div class="panel"><h2>Recent Work Orders</h2><table><tr><th>WO No.</th><th>Work Name</th><th>Location</th><th>Value</th><th>Status</th></tr>
+{% for r in recent %}<tr><td>{{r.wo_no}}</td><td>{{r.work_name}}</td><td>{{r.location}}</td><td>₹{{"{:,.0f}".format(r.contract_value or 0)}}</td><td>{{r.status}}</td></tr>{% else %}<tr><td colspan="5">No work orders yet.</td></tr>{% endfor %}</table></div>{% endblock %}

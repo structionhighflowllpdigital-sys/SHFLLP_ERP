@@ -1,0 +1,7 @@
+
+{% extends "base.html" %}{% block heading %}Reports{% endblock %}{% block content %}
+<div class="panel"><h2>Project Financial Summary</h2><table><tr><th>Project</th><th>Client</th><th>Location</th><th>Contract Value</th><th>Expenses</th><th>Billed</th><th>Receipts</th><th>Balance</th></tr>
+{% for r in rows %}<tr><td>{{r.project_code}} - {{r.project_name}}</td><td>{{r.client}}</td><td>{{r.location}}</td>
+<td>₹{{"{:,.0f}".format(r.contract_value or 0)}}</td><td>₹{{"{:,.0f}".format(r.expenses or 0)}}</td><td>₹{{"{:,.0f}".format(r.billed or 0)}}</td>
+<td>₹{{"{:,.0f}".format(r.receipts or 0)}}</td><td>₹{{"{:,.0f}".format((r.contract_value or 0)-(r.receipts or 0))}}</td></tr>
+{% else %}<tr><td colspan="8">No project data.</td></tr>{% endfor %}</table></div>{% endblock %}

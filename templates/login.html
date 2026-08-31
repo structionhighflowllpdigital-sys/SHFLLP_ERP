@@ -1,0 +1,6 @@
+
+<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="{{url_for('static',filename='style.css')}}"><title>Login</title></head>
+<body class="loginbody"><form class="loginbox" method="post"><h1>SHF ERP</h1><p>STRUCTION HIGH FLOW LLP</p>
+{% with messages=get_flashed_messages(with_categories=true) %}{% for cat,msg in messages %}<div class="flash {{cat}}">{{msg}}</div>{% endfor %}{% endwith %}
+<label>Username<input name="username" required></label><label>Password<input type="password" name="password" required></label><button class="primary">Login</button>
+<div class="hint">Default login: admin / admin123</div></form></body></html>

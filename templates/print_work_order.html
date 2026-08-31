@@ -1,0 +1,10 @@
+
+<!doctype html><html><head><meta charset="utf-8"><title>{{wo.wo_no}}</title><style>
+body{font-family:Arial;margin:35px}.head{text-align:center;border-bottom:2px solid #111}.meta{width:100%;border-collapse:collapse;margin-top:25px}.meta td{border:1px solid #555;padding:9px}.label{font-weight:bold;background:#eee}.sign{display:flex;justify-content:space-between;margin-top:60px}@media print{button{display:none}}</style></head>
+<body><button onclick="window.print()">Print / Save PDF</button><div class="head"><h1>STRUCTION HIGH FLOW LLP</h1><h2>WORK ORDER</h2></div>
+<table class="meta"><tr><td class="label">WO No.</td><td>{{wo.wo_no}}</td><td class="label">Date</td><td>{{wo.wo_date}}</td></tr>
+<tr><td class="label">Work Name</td><td colspan="3">{{wo.work_name}}</td></tr><tr><td class="label">Project</td><td>{{wo.project_code}} - {{wo.project_name}}</td><td class="label">Location</td><td>{{wo.location}}</td></tr>
+<tr><td class="label">PO No.</td><td>{{wo.po_no}}</td><td class="label">PO Date</td><td>{{wo.po_date}}</td></tr>
+<tr><td class="label">Start Date</td><td>{{wo.start_date}}</td><td class="label">End Date</td><td>{{wo.end_date}}</td></tr>
+<tr><td class="label">Contract Value</td><td>₹{{"{:,.2f}".format(wo.contract_value or 0)}}</td><td class="label">Status</td><td>{{wo.status}}</td></tr></table>
+<p><b>Remarks:</b> {{wo.remarks or ''}}</p><div class="sign"><span>Prepared By</span><span>Authorized Signatory</span></div></body></html>
