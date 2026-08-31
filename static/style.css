@@ -212,3 +212,130 @@ header a {
         width: 100% !important;
     }
 }
+/* ===== SHF ERP FINAL MOBILE SIDEBAR ===== */
+
+.menu-btn {
+    display: none;
+}
+
+.mobile-overlay {
+    display: none;
+}
+
+@media (max-width: 768px) {
+
+    html, body {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+    }
+
+    /* Mobile menu button */
+    .menu-btn {
+        display: block !important;
+        position: fixed !important;
+        top: 12px !important;
+        left: 12px !important;
+        z-index: 3000 !important;
+        width: 46px !important;
+        height: 46px !important;
+        border: none !important;
+        border-radius: 8px !important;
+        background: #16395f !important;
+        color: white !important;
+        font-size: 25px !important;
+        cursor: pointer !important;
+    }
+
+    /* Sidebar hidden outside screen */
+    aside#sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: -290px !important;
+        bottom: 0 !important;
+        width: 270px !important;
+        height: 100vh !important;
+        padding: 75px 20px 25px !important;
+        z-index: 2500 !important;
+        overflow-y: auto !important;
+        transition: left 0.25s ease !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Sidebar appears after pressing ☰ */
+    aside#sidebar.mobile-open {
+        left: 0 !important;
+    }
+
+    aside#sidebar nav {
+        display: block !important;
+    }
+
+    aside#sidebar nav a {
+        display: block !important;
+        width: 100% !important;
+        margin: 3px 0 !important;
+        padding: 13px 12px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Dark background when menu is open */
+    .mobile-overlay {
+        position: fixed !important;
+        inset: 0 !important;
+        background: rgba(0,0,0,0.45) !important;
+        z-index: 2000 !important;
+    }
+
+    .mobile-overlay.show {
+        display: block !important;
+    }
+
+    /* Dashboard gets entire phone screen */
+    main {
+        margin-left: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    main header {
+        min-height: 70px !important;
+        padding: 12px 15px 12px 70px !important;
+        box-sizing: border-box !important;
+    }
+
+    main header h1 {
+        font-size: 27px !important;
+        margin: 0 !important;
+    }
+
+    .user-area {
+        font-size: 14px !important;
+    }
+
+    .content {
+        width: 100% !important;
+        padding: 16px !important;
+        box-sizing: border-box !important;
+    }
+
+    .cards {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        width: 100% !important;
+        gap: 14px !important;
+    }
+
+    .card,
+    .panel {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .panel {
+        overflow-x: auto !important;
+    }
+}
