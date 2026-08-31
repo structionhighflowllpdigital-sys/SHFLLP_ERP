@@ -8,6 +8,8 @@
 </head>
 
 <body>
+    <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+<div class="mobile-overlay" onclick="toggleMenu()"></div>
 
 <button class="menu-btn" onclick="toggleMenu()">☰</button>
 
@@ -65,5 +67,11 @@ function toggleMenu() {
 }
 </script>
 
+<script>
+function toggleMenu() {
+    document.querySelector('aside').classList.toggle('mobile-open');
+    document.querySelector('.mobile-overlay').classList.toggle('show');
+}
+</script>
 </body>
 </html>
