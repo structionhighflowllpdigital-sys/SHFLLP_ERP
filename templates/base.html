@@ -3,75 +3,162 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <title>{% block title %}SHF ERP{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
 </head>
 
 <body>
-    <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
-<div class="mobile-overlay" onclick="toggleMenu()"></div>
 
-<button class="menu-btn" onclick="toggleMenu()">☰</button>
+    <!-- Mobile Menu Button -->
+    <button
+        class="mobile-menu-btn"
+        type="button"
+        onclick="toggleMenu()"
+        aria-label="Open menu">
+        ☰
+    </button>
 
-<div class="mobile-overlay" id="mobileOverlay" onclick="toggleMenu()"></div>
-
-<aside id="sidebar">
-    <div class="brand">
-        SHF ERP
-        <small>STRUCTION HIGH FLOW LLP</small>
+    <!-- Mobile Overlay -->
+    <div
+        class="mobile-overlay"
+        onclick="toggleMenu()">
     </div>
 
-    <nav>
-        <a href="{{url_for('dashboard')}}">Dashboard</a>
-        <a href="{{url_for('module',slug='projects')}}">Projects</a>
-        <a href="{{url_for('module',slug='work-orders')}}">Work Orders</a>
-        <a href="{{url_for('module',slug='vendors')}}">Contractors / Vendors</a>
-        <a href="{{url_for('module',slug='employees')}}">Employees / Workers</a>
-        <a href="{{url_for('module',slug='materials')}}">Material / Inventory</a>
-        <a href="{{url_for('module',slug='expenses')}}">Site Expenses</a>
-        <a href="{{url_for('module',slug='billing')}}">Billing</a>
-        <a href="{{url_for('module',slug='payments')}}">Payments</a>
-        <a href="{{url_for('reports')}}">Reports</a>
-    </nav>
-</aside>
+    <!-- Sidebar -->
+    <aside id="sidebar">
 
-<main>
-    <header>
-        <h1>{% block heading %}ERP{% endblock %}</h1>
-
-        <div class="user-area">
-            {{session.get('user')}}
-            ·
-            <a href="{{url_for('logout')}}">Logout</a>
+        <div class="brand">
+            SHF ERP
+            <small>STRUCTION HIGH FLOW LLP</small>
         </div>
-    </header>
 
-    <div class="content">
+        <nav>
+            <a href="{{ url_for('dashboard') }}">
+                Dashboard
+            </a>
 
-        {% with messages=get_flashed_messages(with_categories=true) %}
-            {% for cat,msg in messages %}
-                <div class="flash {{cat}}">{{msg}}</div>
-            {% endfor %}
-        {% endwith %}
+            <a href="{{ url_for('module', slug='projects') }}">
+                Projects
+            </a>
 
-        {% block content %}
-        {% endblock %}
+            <a href="{{ url_for('module', slug='work-orders') }}">
+                Work Orders
+            </a>
 
-    </div>
-</main>
+            <a href="{{ url_for('module', slug='vendors') }}">
+                Contractors / Vendors
+            </a>
 
-<script>
-function toggleMenu() {
-    document.getElementById("sidebar").classList.toggle("mobile-open");
-    document.getElementById("mobileOverlay").classList.toggle("show");
-}
-</script>
+            <a href="{{ url_for('module', slug='employees') }}">
+                Employees / Workers
+            </a>
 
-<script>
-function toggleMenu() {
-    document.querySelector('aside').classList.toggle('mobile-open');
-    document.querySelector('.mobile-overlay').classList.toggle('show');
-}
-</script>
+            <a href="{{ url_for('module', slug='materials') }}">
+                Material / Inventory
+            </a>
+
+            <a href="{{ url_for('module', slug='expenses') }}">
+                Site Expenses
+            </a>
+
+            <a href="{{ url_for('module', slug='billing') }}">
+                Billing
+            </a>
+
+            <a href="{{ url_for('module', slug='payments') }}">
+                Payments
+            </a>
+
+            <a href="{{ url_for('reports') }}">
+                Reports
+            </a>
+        </nav>
+
+    </aside>
+
+    <!-- Main Content -->
+    <main>
+
+        <header>
+
+            <h1>
+                {% block heading %}
+                ERP
+                {% endblock %}
+            </h1>
+
+            <div class="user-area">
+                <span>
+                    {{ session.get('user') }}
+                </span>
+
+                <span>·</span>
+
+                <a href="{{ url_for('logout') }}">
+                    Logout
+                </a>
+            </div>
+
+        </header>
+
+        <div class="content">
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+
+                {% for cat, msg in messages %}
+
+                    <div class="flash {{ cat }}">
+                        {{ msg }}
+                    </div>
+
+                {% endfor %}
+
+            {% endwith %}
+
+            {% block content %}
+            {% endblock %}
+
+        </div>
+
+    </main>
+
+    <script>
+        function toggleMenu() {
+            const sidebar =
+                document.getElementById("sidebar");
+
+            const overlay =
+                document.querySelector(".mobile-overlay");
+
+            sidebar.classList.toggle("mobile-open");
+            overlay.classList.toggle("show");
+        }
+
+
+        /* Close sidebar after selecting a menu item on mobile */
+        document.querySelectorAll("#sidebar nav a")
+            .forEach(function(link) {
+
+                link.addEventListener("click", function() {
+
+                    if (window.innerWidth <= 768) {
+
+                        document
+                            .getElementById("sidebar")
+                            .classList.remove("mobile-open");
+
+                        document
+                            .querySelector(".mobile-overlay")
+                            .classList.remove("show");
+                    }
+
+                });
+
+            });
+    </script>
+
 </body>
 </html>
