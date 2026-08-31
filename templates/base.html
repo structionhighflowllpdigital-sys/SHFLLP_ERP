@@ -1,1 +1,58 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}SHF ERP{% endblock %}</title>
+<link rel="stylesheet" href="{{url_for('static',filename='style.css')}}">
+</head>
 
+<body>
+
+<aside>
+  <div class="brand">
+    SHF ERP
+    <small>STRUCTION HIGH FLOW LLP</small>
+  </div>
+
+  <nav>
+    <a href="{{url_for('dashboard')}}">Dashboard</a>
+    <a href="{{url_for('module',slug='projects')}}">Projects</a>
+    <a href="{{url_for('module',slug='work-orders')}}">Work Orders</a>
+    <a href="{{url_for('module',slug='vendors')}}">Contractors / Vendors</a>
+    <a href="{{url_for('module',slug='employees')}}">Employees / Workers</a>
+    <a href="{{url_for('module',slug='materials')}}">Material / Inventory</a>
+    <a href="{{url_for('module',slug='expenses')}}">Site Expenses</a>
+    <a href="{{url_for('module',slug='billing')}}">Billing</a>
+    <a href="{{url_for('module',slug='payments')}}">Payments</a>
+    <a href="{{url_for('reports')}}">Reports</a>
+  </nav>
+</aside>
+
+<main>
+  <header>
+    <h1>{% block heading %}ERP{% endblock %}</h1>
+
+    <div>
+      {{session.get('user')}}
+      ·
+      <a href="{{url_for('logout')}}">Logout</a>
+    </div>
+  </header>
+
+  <div class="content">
+
+    {% with messages=get_flashed_messages(with_categories=true) %}
+      {% for cat,msg in messages %}
+        <div class="flash {{cat}}">{{msg}}</div>
+      {% endfor %}
+    {% endwith %}
+
+    {% block content %}
+    {% endblock %}
+
+  </div>
+</main>
+
+</body>
+</html>
