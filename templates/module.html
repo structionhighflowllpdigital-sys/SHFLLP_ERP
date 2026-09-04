@@ -1,17 +1,546 @@
+{% extends "base.html" %}
 
-{% extends "base.html" %}{% block heading %}{{title}}{% endblock %}{% block content %}
-<div class="toolbar"><button class="primary" onclick="document.getElementById('dlg').showModal()">+ Add New</button><a class="btn" href="{{url_for('export_csv',slug=slug)}}">Export CSV</a></div>
-<div class="panel"><table><tr>{% for name,label,typ in fields %}<th>{{label}}</th>{% endfor %}<th>Action</th></tr>
-{% for r in rows %}<tr>{% for name,label,typ in fields %}<td>
-{% if typ=='project' %}{% for p in projects %}{% if p.id==r[name] %}{{p.project_code}} - {{p.project_name}}{% endif %}{% endfor %}
-{% elif typ=='number' %}{{r[name] or 0}}{% else %}{{r[name] or ''}}{% endif %}</td>{% endfor %}
-<td class="actions">{% if slug=='work-orders' %}<a class="smallbtn" target="_blank" href="{{url_for('print_work_order',id=r.id)}}">Print</a>{% endif %}
-<form method="post" action="{{url_for('delete_record',slug=slug,id=r.id)}}" onsubmit="return confirm('Delete this record?')"><button class="danger">Delete</button></form></td></tr>
-{% else %}<tr><td colspan="20">No records yet.</td></tr>{% endfor %}</table></div>
-<dialog id="dlg"><form method="post" class="formbox"><h2>Add {{title}}</h2><div class="formgrid">
-{% for name,label,typ in fields %}<label class="{% if typ=='textarea' %}wide{% endif %}">{{label}}
-{% if typ=='textarea' %}<textarea name="{{name}}"></textarea>
-{% elif typ=='project' %}<select name="{{name}}"><option value="">-- Select Project --</option>{% for p in projects %}<option value="{{p.id}}">{{p.project_code}} - {{p.project_name}}</option>{% endfor %}</select>
-{% elif typ.startswith('select:') %}<select name="{{name}}">{% for o in typ.split(':',1)[1].split('|') %}<option>{{o}}</option>{% endfor %}</select>
-{% else %}<input type="{{typ}}" name="{{name}}" {% if typ=='number' %}step="0.01"{% endif %}></label>{% endif %}
-{% endfor %}</div><div class="dialogactions"><button type="button" onclick="dlg.close()">Cancel</button><button class="primary">Save</button></div></form></dialog>{% endblock %}
+{% block title %}
+{{ title }} | SHF ERP
+{% endblock %}
+
+{% block heading %}
+{{ title }}
+{% endblock %}
+
+{% block content %}
+
+<style>
+    .module-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 18px;
+        flex-wrap: wrap;
+    }
+
+    .module-toolbar-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        padding: 10px 16px;
+        border-radius: 9px;
+        border: 1px solid #d7dde5;
+        background: white;
+        color: #153556;
+        text-decoration: none;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn:hover {
+        background: #f5f8fb;
+    }
+
+    .btn-primary {
+        background: #153556;
+        color: white;
+        border-color: #153556;
+    }
+
+    .btn-primary:hover {
+        background: #1d4d79;
+    }
+
+    .btn-danger {
+        background: #fff5f5;
+        color: #b42318;
+        border-color: #ffd4d4;
+    }
+
+    .module-table-wrap {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .module-table {
+        width: 100%;
+        min-width: 900px;
+        border-collapse: collapse;
+    }
+
+    .module-table th {
+        background: #f7f9fc;
+        color: #475467;
+        font-size: 13px;
+        font-weight: 700;
+        padding: 13px 12px;
+        border-bottom: 1px solid #e4e7ec;
+        white-space: nowrap;
+    }
+
+    .module-table td {
+        padding: 13px 12px;
+        border-bottom: 1px solid #edf0f4;
+        font-size: 14px;
+        vertical-align: top;
+    }
+
+    .module-table tr:hover td {
+        background: #fbfcfe;
+    }
+
+    .empty-row {
+        text-align: center;
+        color: #7b8493;
+        padding: 35px !important;
+    }
+
+    .action-area {
+        display: flex;
+        gap: 7px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .small-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 34px;
+        padding: 7px 10px;
+        border-radius: 7px;
+        border: 1px solid #d7dde5;
+        background: white;
+        color: #153556;
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .small-btn.danger {
+        color: #b42318;
+        background: #fff7f7;
+        border-color: #ffd6d6;
+    }
+
+    .record-dialog {
+        width: min(760px, 94vw);
+        max-height: 90vh;
+        border: none;
+        border-radius: 16px;
+        padding: 0;
+        box-shadow: 0 25px 80px rgba(0,0,0,0.28);
+    }
+
+    .record-dialog::backdrop {
+        background: rgba(15, 23, 42, 0.55);
+    }
+
+    .dialog-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 22px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .dialog-header h2 {
+        margin: 0;
+        color: #153556;
+        font-size: 22px;
+    }
+
+    .dialog-close {
+        border: none;
+        background: #f2f4f7;
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 20px;
+    }
+
+    .dialog-body {
+        padding: 22px;
+        overflow-y: auto;
+        max-height: calc(90vh - 150px);
+    }
+
+    .formgrid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0,1fr));
+        gap: 16px;
+    }
+
+    .field-group {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+    }
+
+    .field-group.full {
+        grid-column: 1 / -1;
+    }
+
+    .field-group label {
+        font-size: 13px;
+        font-weight: 700;
+        color: #344054;
+    }
+
+    .field-group input,
+    .field-group select,
+    .field-group textarea {
+        width: 100%;
+        min-height: 44px;
+        padding: 10px 12px;
+        border: 1px solid #d0d5dd;
+        border-radius: 8px;
+        background: white;
+        color: #101828;
+        outline: none;
+    }
+
+    .field-group textarea {
+        min-height: 95px;
+        resize: vertical;
+    }
+
+    .field-group input:focus,
+    .field-group select:focus,
+    .field-group textarea:focus {
+        border-color: #24649a;
+        box-shadow: 0 0 0 3px rgba(36,100,154,0.1);
+    }
+
+    .dialog-footer {
+        padding: 16px 22px 22px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+    @media screen and (max-width: 768px) {
+        .module-toolbar {
+            align-items: stretch;
+        }
+
+        .module-toolbar-left {
+            width: 100%;
+        }
+
+        .module-toolbar .btn {
+            flex: 1;
+        }
+
+        .formgrid {
+            grid-template-columns: 1fr;
+        }
+
+        .field-group.full {
+            grid-column: auto;
+        }
+
+        .record-dialog {
+            width: 96vw;
+        }
+
+        .dialog-header,
+        .dialog-body,
+        .dialog-footer {
+            padding-left: 16px;
+            padding-right: 16px;
+        }
+    }
+</style>
+
+
+<div class="module-toolbar">
+
+    <div class="module-toolbar-left">
+
+        <button
+            type="button"
+            class="btn btn-primary"
+            onclick="document.getElementById('recordDialog').showModal()">
+            + Add New
+        </button>
+
+        <a
+            class="btn"
+            href="{{ url_for('export_csv', slug=slug) }}">
+            Export CSV
+        </a>
+
+    </div>
+
+</div>
+
+
+<div class="panel">
+
+    <div class="module-table-wrap">
+
+        <table class="module-table">
+
+            <thead>
+                <tr>
+
+                    {% for name, label, typ in fields %}
+                        <th>{{ label }}</th>
+                    {% endfor %}
+
+                    <th>Action</th>
+
+                </tr>
+            </thead>
+
+            <tbody>
+
+            {% if rows %}
+
+                {% for r in rows %}
+
+                    <tr>
+
+                        {% for name, label, typ in fields %}
+
+                            <td>
+
+                                {% if typ == "project" %}
+
+                                    {% set project = projects | selectattr("id", "equalto", r[name]) | first %}
+
+                                    {% if project %}
+                                        {{ project["project_code"] }} - {{ project["project_name"] }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+
+                                {% elif typ == "number" %}
+
+                                    {{ r[name] or 0 }}
+
+                                {% else %}
+
+                                    {{ r[name] or "-" }}
+
+                                {% endif %}
+
+                            </td>
+
+                        {% endfor %}
+
+
+                        <td>
+
+                            <div class="action-area">
+
+                                {% if slug == "work-orders" %}
+
+                                    <a
+                                        class="small-btn"
+                                        href="{{ url_for('print_work_order', id=r['id']) }}"
+                                        target="_blank">
+                                        Print
+                                    </a>
+
+                                {% endif %}
+
+
+                                <form
+                                    method="post"
+                                    action="{{ url_for('delete_record', slug=slug, id=r['id']) }}"
+                                    onsubmit="return confirm('Delete this record?');">
+
+                                    <button
+                                        type="submit"
+                                        class="small-btn danger">
+                                        Delete
+                                    </button>
+
+                                </form>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                {% endfor %}
+
+            {% else %}
+
+                <tr>
+                    <td
+                        class="empty-row"
+                        colspan="{{ fields|length + 1 }}">
+                        No records yet.
+                    </td>
+                </tr>
+
+            {% endif %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+
+<dialog
+    id="recordDialog"
+    class="record-dialog">
+
+    <form method="post">
+
+        <div class="dialog-header">
+
+            <h2>
+                Add {{ title }}
+            </h2>
+
+            <button
+                type="button"
+                class="dialog-close"
+                onclick="document.getElementById('recordDialog').close()">
+                ×
+            </button>
+
+        </div>
+
+
+        <div class="dialog-body">
+
+            <div class="formgrid">
+
+                {% for name, label, typ in fields %}
+
+                    <div class="field-group {% if typ == 'textarea' %}full{% endif %}">
+
+                        <label for="{{ name }}">
+                            {{ label }}
+                        </label>
+
+
+                        {% if typ == "textarea" %}
+
+                            <textarea
+                                id="{{ name }}"
+                                name="{{ name }}"></textarea>
+
+
+                        {% elif typ == "project" %}
+
+                            <select
+                                id="{{ name }}"
+                                name="{{ name }}">
+
+                                <option value="">
+                                    -- Select Project --
+                                </option>
+
+                                {% for p in projects %}
+
+                                    <option value="{{ p['id'] }}">
+                                        {{ p["project_code"] }} - {{ p["project_name"] }}
+                                    </option>
+
+                                {% endfor %}
+
+                            </select>
+
+
+                        {% elif typ.startswith("select:") %}
+
+                            {% set options = typ.split(":",1)[1].split("|") %}
+
+                            <select
+                                id="{{ name }}"
+                                name="{{ name }}">
+
+                                {% for option in options %}
+
+                                    <option value="{{ option }}">
+                                        {{ option }}
+                                    </option>
+
+                                {% endfor %}
+
+                            </select>
+
+
+                        {% elif typ == "number" %}
+
+                            <input
+                                id="{{ name }}"
+                                name="{{ name }}"
+                                type="number"
+                                step="any"
+                                value="0">
+
+
+                        {% elif typ == "date" %}
+
+                            <input
+                                id="{{ name }}"
+                                name="{{ name }}"
+                                type="date">
+
+
+                        {% elif typ == "email" %}
+
+                            <input
+                                id="{{ name }}"
+                                name="{{ name }}"
+                                type="email">
+
+
+                        {% else %}
+
+                            <input
+                                id="{{ name }}"
+                                name="{{ name }}"
+                                type="text">
+
+                        {% endif %}
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+
+        <div class="dialog-footer">
+
+            <button
+                type="button"
+                class="btn"
+                onclick="document.getElementById('recordDialog').close()">
+                Cancel
+            </button>
+
+            <button
+                type="submit"
+                class="btn btn-primary">
+                Save
+            </button>
+
+        </div>
+
+    </form>
+
+</dialog>
+
+{% endblock %}
