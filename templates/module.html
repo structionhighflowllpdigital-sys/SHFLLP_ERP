@@ -323,6 +323,16 @@
                                         -
                                     {% endif %}
 
+                                {% elif typ == "vendor" %}
+
+                                    {% set vendor = vendors | selectattr("id", "equalto", r[name]) | first %}
+
+                                    {% if vendor %}
+                                        {{ vendor["vendor_code"] }} - {{ vendor["vendor_name"] }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+
                                 {% elif typ == "number" %}
 
                                     {{ r[name] or 0 }}
@@ -459,6 +469,29 @@
                             </select>
 
 
+                        {% elif typ == "vendor" %}
+
+                            <select
+                                id="{{ name }}"
+                                name="{{ name }}">
+
+                                <option value="">
+                                    -- Select Contractor / Vendor --
+                                </option>
+
+                                {% for v in vendors %}
+
+                                    <option value="{{ v['id'] }}">
+                                        {{ v["vendor_code"] }} - {{ v["vendor_name"] }}
+                                        {% if v["gst_no"] %} | GST: {{ v["gst_no"] }}{% endif %}
+                                        {% if v["pan_no"] %} | PAN: {{ v["pan_no"] }}{% endif %}
+                                    </option>
+
+                                {% endfor %}
+
+                            </select>
+
+
                         {% elif typ.startswith("select:") %}
 
                             {% set options = typ.split(":",1)[1].split("|") %}
@@ -485,7 +518,8 @@
                                 name="{{ name }}"
                                 type="number"
                                 step="any"
-                                value="0">
+                                value="0"
+                                {% if name in ["taxable_amount", "gst_amount", "total_amount"] %}readonly{% endif %}>
 
 
                         {% elif typ == "date" %}
@@ -542,5 +576,61 @@
     </form>
 
 </dialog>
+
+<script>
+(function () {
+    function numberValue(id) {
+        const el = document.getElementById(id);
+        return el ? (parseFloat(el.value) || 0) : 0;
+    }
+
+    function setNumber(id, value) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.value = Number(value).toFixed(2);
+        }
+    }
+
+    function calculateWorkOrderGST() {
+        if ("{{ slug }}" !== "work-orders") return;
+
+        const basic = numberValue("contract_value");
+        const gstPercent = numberValue("gst_percent");
+        const gstAmount = basic * gstPercent / 100;
+        const total = basic + gstAmount;
+
+        setNumber("gst_amount", gstAmount);
+        setNumber("total_amount", total);
+    }
+
+    function calculateMaterialGST() {
+        if ("{{ slug }}" !== "materials") return;
+
+        const qty = numberValue("qty");
+        const rate = numberValue("rate");
+        const gstPercent = numberValue("gst_percent");
+        const taxable = qty * rate;
+        const gstAmount = taxable * gstPercent / 100;
+        const total = taxable + gstAmount;
+
+        setNumber("taxable_amount", taxable);
+        setNumber("gst_amount", gstAmount);
+        setNumber("total_amount", total);
+    }
+
+    ["contract_value", "qty", "rate", "gst_percent"].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener("input", function () {
+                calculateWorkOrderGST();
+                calculateMaterialGST();
+            });
+        }
+    });
+
+    calculateWorkOrderGST();
+    calculateMaterialGST();
+})();
+</script>
 
 {% endblock %}
