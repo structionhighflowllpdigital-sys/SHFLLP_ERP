@@ -3,7 +3,8 @@ from flask import (
     url_for, session, flash, send_file
 )
 
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 import os
 import csv
 import io
@@ -19,10 +20,7 @@ app.secret_key = os.environ.get(
     "change-this-secret-key"
 )
 
-DB = os.path.join(
-    os.path.dirname(__file__),
-    "erp.db"
-)
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 
 # =========================================================
@@ -30,170 +28,170 @@ DB = os.path.join(
 # =========================================================
 
 def db():
-    conn = sqlite3.connect(DB)
-    conn.row_factory = sqlite3.Row
-    return conn
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL environment variable is not configured.")
 
-
-def column_exists(conn, table, column):
-    columns = conn.execute(
-        f"PRAGMA table_info({table})"
-    ).fetchall()
-
-    return any(
-        row["name"] == column
-        for row in columns
+    return psycopg2.connect(
+        DATABASE_URL,
+        cursor_factory=RealDictCursor
     )
 
 
-def init_db():
+def execute(conn, sql, params=None):
+    cur = conn.cursor()
+    cur.execute(sql, params or ())
+    return cur
 
-    conn = db()
-    c = conn.cursor()
 
-    c.executescript("""
-    CREATE TABLE IF NOT EXISTS users(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'Admin',
-        active INTEGER NOT NULL DEFAULT 1
-    );
-
-    CREATE TABLE IF NOT EXISTS projects(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        project_code TEXT UNIQUE NOT NULL,
-        project_name TEXT NOT NULL,
-        client TEXT,
-        location TEXT,
-        start_date TEXT,
-        end_date TEXT,
-        contract_value REAL DEFAULT 0,
-        status TEXT DEFAULT 'Active',
-        remarks TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS work_orders(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        wo_no TEXT UNIQUE NOT NULL,
-        work_name TEXT NOT NULL,
-        project_id INTEGER,
-        location TEXT,
-        wo_date TEXT,
-        po_no TEXT,
-        po_date TEXT,
-        start_date TEXT,
-        end_date TEXT,
-        contract_value REAL DEFAULT 0,
-        status TEXT DEFAULT 'Active',
-        remarks TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS vendors(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        vendor_code TEXT UNIQUE NOT NULL,
-        vendor_name TEXT NOT NULL,
-        contact TEXT,
-        email TEXT,
-        gst_no TEXT,
-        bank_details TEXT,
-        status TEXT DEFAULT 'Active',
-        remarks TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS employees(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        emp_code TEXT UNIQUE NOT NULL,
-        name TEXT NOT NULL,
-        designation TEXT,
-        phone TEXT,
-        joining_date TEXT,
-        salary REAL DEFAULT 0,
-        project_id INTEGER,
-        status TEXT DEFAULT 'Active'
-    );
-
-    CREATE TABLE IF NOT EXISTS materials(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        item_code TEXT UNIQUE NOT NULL,
-        item_name TEXT NOT NULL,
-        unit TEXT,
-        qty REAL DEFAULT 0,
-        rate REAL DEFAULT 0,
-        location TEXT,
-        remarks TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS expenses(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        expense_date TEXT,
-        project_id INTEGER,
-        category TEXT,
-        description TEXT,
-        amount REAL DEFAULT 0,
-        paid_to TEXT,
-        payment_mode TEXT,
-        remarks TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS bills(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        bill_no TEXT UNIQUE NOT NULL,
-        bill_date TEXT,
-        project_id INTEGER,
-        bill_type TEXT,
-        party_name TEXT,
-        gross_amount REAL DEFAULT 0,
-        deductions REAL DEFAULT 0,
-        net_amount REAL DEFAULT 0,
-        status TEXT DEFAULT 'Pending',
-        remarks TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS payments(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        payment_no TEXT UNIQUE NOT NULL,
-        payment_date TEXT,
-        project_id INTEGER,
-        party_name TEXT,
-        amount REAL DEFAULT 0,
-        mode TEXT,
-        reference_no TEXT,
-        type TEXT,
-        remarks TEXT
-    );
-    """)
-
-    # Upgrade old users table automatically
-    if not column_exists(
+def column_exists(conn, table, column):
+    row = execute(
         conn,
-        "users",
-        "active"
-    ):
-        conn.execute(
-            "ALTER TABLE users "
-            "ADD COLUMN active INTEGER "
-            "NOT NULL DEFAULT 1"
+        """
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema='public'
+          AND table_name=%s
+          AND column_name=%s
+        LIMIT 1
+        """,
+        (table, column)
+    ).fetchone()
+    return row is not None
+
+
+def init_db():
+    conn = db()
+
+    statements = [
+        """CREATE TABLE IF NOT EXISTS users(
+            id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'Admin',
+            active INTEGER NOT NULL DEFAULT 1
+        )""",
+        """CREATE TABLE IF NOT EXISTS projects(
+            id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+            project_code TEXT UNIQUE NOT NULL,
+            project_name TEXT NOT NULL,
+            client TEXT,
+            location TEXT,
+            start_date TEXT,
+            end_date TEXT,
+            contract_value DOUBLE PRECISION DEFAULT 0,
+            status TEXT DEFAULT 'Active',
+            remarks TEXT
+        )""",
+        """CREATE TABLE IF NOT EXISTS work_orders(
+            id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+            wo_no TEXT UNIQUE NOT NULL,
+            work_name TEXT NOT NULL,
+            project_id INTEGER,
+            location TEXT,
+            wo_date TEXT,
+            po_no TEXT,
+            po_date TEXT,
+            start_date TEXT,
+            end_date TEXT,
+            contract_value DOUBLE PRECISION DEFAULT 0,
+            status TEXT DEFAULT 'Active',
+            remarks TEXT
+        )""",
+        """CREATE TABLE IF NOT EXISTS vendors(
+            id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+            vendor_code TEXT UNIQUE NOT NULL,
+            vendor_name TEXT NOT NULL,
+            contact TEXT,
+            email TEXT,
+            gst_no TEXT,
+            bank_details TEXT,
+            status TEXT DEFAULT 'Active',
+            remarks TEXT
+        )""",
+        """CREATE TABLE IF NOT EXISTS employees(
+            id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+            emp_code TEXT UNIQUE NOT NULL,
+            name TEXT NOT NULL,
+            designation TEXT,
+            phone TEXT,
+            joining_date TEXT,
+            salary DOUBLE PRECISION DEFAULT 0,
+            project_id INTEGER,
+            status TEXT DEFAULT 'Active'
+        )""",
+        """CREATE TABLE IF NOT EXISTS materials(
+            id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+            item_code TEXT UNIQUE NOT NULL,
+            item_name TEXT NOT NULL,
+            unit TEXT,
+            qty DOUBLE PRECISION DEFAULT 0,
+            rate DOUBLE PRECISION DEFAULT 0,
+            location TEXT,
+            remarks TEXT
+        )""",
+        """CREATE TABLE IF NOT EXISTS expenses(
+            id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+            expense_date TEXT,
+            project_id INTEGER,
+            category TEXT,
+            description TEXT,
+            amount DOUBLE PRECISION DEFAULT 0,
+            paid_to TEXT,
+            payment_mode TEXT,
+            remarks TEXT
+        )""",
+        """CREATE TABLE IF NOT EXISTS bills(
+            id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+            bill_no TEXT UNIQUE NOT NULL,
+            bill_date TEXT,
+            project_id INTEGER,
+            bill_type TEXT,
+            party_name TEXT,
+            gross_amount DOUBLE PRECISION DEFAULT 0,
+            deductions DOUBLE PRECISION DEFAULT 0,
+            net_amount DOUBLE PRECISION DEFAULT 0,
+            status TEXT DEFAULT 'Pending',
+            remarks TEXT
+        )""",
+        """CREATE TABLE IF NOT EXISTS payments(
+            id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+            payment_no TEXT UNIQUE NOT NULL,
+            payment_date TEXT,
+            project_id INTEGER,
+            party_name TEXT,
+            amount DOUBLE PRECISION DEFAULT 0,
+            mode TEXT,
+            reference_no TEXT,
+            type TEXT,
+            remarks TEXT
+        )"""
+    ]
+
+    for statement in statements:
+        execute(conn, statement)
+
+    if not column_exists(conn, "users", "active"):
+        execute(
+            conn,
+            "ALTER TABLE users ADD COLUMN active INTEGER NOT NULL DEFAULT 1"
         )
 
-    user = conn.execute(
-        "SELECT * FROM users "
-        "WHERE username='admin'"
+    user = execute(
+        conn,
+        "SELECT * FROM users WHERE username='admin'"
     ).fetchone()
 
     if not user:
-
-        conn.execute(
+        execute(
+            conn,
             """
             INSERT INTO users
             (username,password_hash,role,active)
-            VALUES(?,?,?,?)
+            VALUES(%s,%s,%s,%s)
             """,
             (
                 "admin",
-                generate_password_hash(
-                    "admin123"
-                ),
+                generate_password_hash("admin123"),
                 "Admin",
                 1
             )
@@ -270,11 +268,11 @@ def login():
 
         conn = db()
 
-        user = conn.execute(
+        user = execute(conn, 
             """
             SELECT *
             FROM users
-            WHERE username=?
+            WHERE username=%s
             """,
             (
                 request.form[
@@ -353,7 +351,7 @@ def dashboard():
     stats = {
 
         "projects":
-            conn.execute(
+            execute(conn, 
                 """
                 SELECT COUNT(*) c
                 FROM projects
@@ -362,7 +360,7 @@ def dashboard():
             ).fetchone()["c"],
 
         "work_orders":
-            conn.execute(
+            execute(conn, 
                 """
                 SELECT COUNT(*) c
                 FROM work_orders
@@ -370,7 +368,7 @@ def dashboard():
             ).fetchone()["c"],
 
         "vendors":
-            conn.execute(
+            execute(conn, 
                 """
                 SELECT COUNT(*) c
                 FROM vendors
@@ -379,7 +377,7 @@ def dashboard():
             ).fetchone()["c"],
 
         "employees":
-            conn.execute(
+            execute(conn, 
                 """
                 SELECT COUNT(*) c
                 FROM employees
@@ -388,7 +386,7 @@ def dashboard():
             ).fetchone()["c"],
 
         "stock_value":
-            conn.execute(
+            execute(conn, 
                 """
                 SELECT
                 COALESCE(
@@ -400,7 +398,7 @@ def dashboard():
             ).fetchone()["v"],
 
         "expenses":
-            conn.execute(
+            execute(conn, 
                 """
                 SELECT
                 COALESCE(
@@ -412,7 +410,7 @@ def dashboard():
             ).fetchone()["v"],
 
         "pending_bills":
-            conn.execute(
+            execute(conn, 
                 """
                 SELECT
                 COALESCE(
@@ -425,7 +423,7 @@ def dashboard():
             ).fetchone()["v"],
 
         "payments":
-            conn.execute(
+            execute(conn, 
                 """
                 SELECT
                 COALESCE(
@@ -437,7 +435,7 @@ def dashboard():
             ).fetchone()["v"],
     }
 
-    recent = conn.execute(
+    recent = execute(conn, 
         """
         SELECT *
         FROM work_orders
@@ -1001,10 +999,10 @@ def module(slug):
                 f"INSERT INTO {table} "
                 f"({','.join(cols)}) "
                 f"VALUES "
-                f"({','.join(['?'] * len(cols))})"
+                f"({','.join(['%s'] * len(cols))})"
             )
 
-            conn.execute(
+            execute(conn, 
                 sql,
                 vals
             )
@@ -1016,7 +1014,9 @@ def module(slug):
                 "success"
             )
 
-        except sqlite3.IntegrityError:
+        except psycopg2.IntegrityError:
+
+            conn.rollback()
 
             flash(
                 "Duplicate code/number. "
@@ -1033,7 +1033,7 @@ def module(slug):
             )
         )
 
-    rows = conn.execute(
+    rows = execute(conn, 
         f"""
         SELECT *
         FROM {table}
@@ -1041,7 +1041,7 @@ def module(slug):
         """
     ).fetchall()
 
-    projects = conn.execute(
+    projects = execute(conn, 
         """
         SELECT
             id,
@@ -1099,10 +1099,10 @@ def delete_record(
 
     conn = db()
 
-    conn.execute(
+    execute(conn, 
         f"""
         DELETE FROM {table}
-        WHERE id=?
+        WHERE id=%s
         """,
         (id,)
     )
@@ -1135,7 +1135,7 @@ def print_work_order(id):
 
     conn = db()
 
-    wo = conn.execute(
+    wo = execute(conn, 
         """
         SELECT
             w.*,
@@ -1144,7 +1144,7 @@ def print_work_order(id):
         FROM work_orders w
         LEFT JOIN projects p
         ON p.id=w.project_id
-        WHERE w.id=?
+        WHERE w.id=%s
         """,
         (id,)
     ).fetchone()
@@ -1170,7 +1170,7 @@ def reports():
 
     conn = db()
 
-    rows = conn.execute(
+    rows = execute(conn, 
         """
         SELECT
             p.project_code,
@@ -1243,7 +1243,7 @@ def export_csv(slug):
 
     conn = db()
 
-    rows = conn.execute(
+    rows = execute(conn, 
         f"""
         SELECT *
         FROM {table}
@@ -1355,7 +1355,7 @@ def users():
 
             try:
 
-                conn.execute(
+                execute(conn, 
                     """
                     INSERT INTO users
                     (
@@ -1364,7 +1364,7 @@ def users():
                         role,
                         active
                     )
-                    VALUES(?,?,?,1)
+                    VALUES(%s,%s,%s,1)
                     """,
                     (
                         username,
@@ -1382,7 +1382,7 @@ def users():
                     "success"
                 )
 
-            except sqlite3.IntegrityError:
+            except psycopg2.IntegrityError:
 
                 flash(
                     "Username already exists.",
@@ -1395,7 +1395,7 @@ def users():
             url_for("users")
         )
 
-    user_rows = conn.execute(
+    user_rows = execute(conn, 
         """
         SELECT
             id,
@@ -1428,11 +1428,11 @@ def toggle_user(user_id):
 
     conn = db()
 
-    user = conn.execute(
+    user = execute(conn, 
         """
         SELECT *
         FROM users
-        WHERE id=?
+        WHERE id=%s
         """,
         (user_id,)
     ).fetchone()
@@ -1462,11 +1462,11 @@ def toggle_user(user_id):
         else 1
     )
 
-    conn.execute(
+    execute(conn, 
         """
         UPDATE users
-        SET active=?
-        WHERE id=?
+        SET active=%s
+        WHERE id=%s
         """,
         (
             new_status,
@@ -1517,11 +1517,11 @@ def reset_user_password(user_id):
 
     conn = db()
 
-    conn.execute(
+    execute(conn, 
         """
         UPDATE users
-        SET password_hash=?
-        WHERE id=?
+        SET password_hash=%s
+        WHERE id=%s
         """,
         (
             generate_password_hash(
