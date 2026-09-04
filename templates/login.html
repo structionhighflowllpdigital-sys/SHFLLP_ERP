@@ -1,6 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
 
-<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="{{url_for('static',filename='style.css')}}"><title>Login</title></head>
-<body class="loginbody"><form class="loginbox" method="post"><h1>SHF ERP</h1><p>STRUCTION HIGH FLOW LLP</p>
-{% with messages=get_flashed_messages(with_categories=true) %}{% for cat,msg in messages %}<div class="flash {{cat}}">{{msg}}</div>{% endfor %}{% endwith %}
-<label>Username<input name="username" required></label><label>Password<input type="password" name="password" required></label><button class="primary">Login</button>
-<div class="hint">Default login: admin / admin123</div></form></body></html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Login | SHF ERP</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            min-height: 100%;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background:
+                linear-gradient(
+                    135deg,
+                    #0d2845 0%,
+                    #153556 50%,
+                    #1d4d79 100%
+                );
+
+            min-height: 100vh;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            padding: 25px;
+            color: #1f2937;
+        }
+
+
+        /* MAIN LOGIN WRAPPER */
+
+        .login-container {
+            width: 100%;
+            max-width: 1050px;
+
+            min-height: 600px;
+
+            background: #ffffff;
+
+            border-radius: 22px;
+
+            overflow: hidden;
+
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+
+            box-shadow:
+                0 25px 70px
+                rgba(0, 0, 0, 0.30);
+        }
+
+
+        /* LEFT BRANDING SECTION */
+
+        .brand-section {
+            position: relative;
+
+            padding: 60px;
+
+            color: white;
+
+            background:
+                linear-gradient(
+                    145deg,
+                    #102f50,
+                    #1d5788
+                );
+
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+
+            overflow: hidden;
+        }
+
+        .brand-section::before {
+            content: "";
+
+            position: absolute;
+
+            width: 350px;
+            height: 350px;
+
+            border-radius: 50%;
+
+            background:
+                rgba(255, 255, 255, 0.06);
+
+            right: -130px;
+            top: -100px;
+        }
+
+        .brand-section::after {
+            content: "";
+
+            position: absolute;
+
+            width: 280px;
+            height: 280px;
+
+            border-radius: 50%;
+
+            background:
+                rgba(255, 255, 255, 0.04);
+
+            left: -100px;
+            bottom: -120px;
+        }
+
+        .brand-content {
+            position: relative;
+            z-index: 2;
+        }
+
+
+        /* ERP LOGO */
+
+        .erp-logo {
+            width: 70px;
+            height: 70px;
+
+            border-radius: 17px;
+
+            background: white;
+
+            color: #153556;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            font-size: 24px;
+            font-weight: 800;
+
+            margin-bottom: 30px;
+
+            box-shadow:
+                0 10px 25px
+                rgba(0, 0, 0, 0.15);
+        }
+
+        .brand-section h1 {
+            margin: 0 0 12px;
+
+            font-size: 44px;
+
+            letter-spacing: 1px;
+        }
+
+        .company-name {
+            font-size: 19px;
+            font-weight: 600;
+
+            line-height: 1.5;
+
+            margin-bottom: 30px;
+        }
+
+        .brand-description {
+            max-width: 440px;
+
+            font-size: 16px;
+            line-height: 1.7;
+
+            color: #dbeafe;
+        }
+
+        .system-items {
+            margin-top: 35px;
+
+            display: grid;
+            gap: 15px;
+        }
+
+        .system-item {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+
+            font-size: 15px;
+        }
+
+        .check-icon {
+            width: 25px;
+            height: 25px;
+
+            border-radius: 50%;
+
+            background:
+                rgba(255, 255, 255, 0.15);
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            font-size: 13px;
+        }
+
+        .brand-footer {
+            position: relative;
+            z-index: 2;
+
+            font-size: 13px;
+
+            color: #cbd5e1;
+        }
+
+
+        /* RIGHT LOGIN SECTION */
+
+        .login-section {
+            padding: 60px 55px;
+
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .login-section h2 {
+            margin: 0;
+
+            font-size: 32px;
+
+            color: #153556;
+        }
+
+        .login-subtitle {
+            color: #687386;
+
+            margin-top: 10px;
+            margin-bottom: 35px;
+
+            font-size: 15px;
+        }
+
+
+        /* FLASH MESSAGES */
+
+        .flash {
+            padding: 12px 14px;
+
+            margin-bottom: 20px;
+
+            border-radius: 8px;
+
+            font-size: 14px;
+
+            background: #fff3f3;
+            color: #b42318;
+
+            border: 1px solid #ffd4d4;
+        }
+
+        .flash.success {
+            background: #ecfdf3;
+            color: #027a48;
+
+            border-color: #abefc6;
+        }
+
+
+        /* FORM */
+
+        .form-group {
+            margin-bottom: 22px;
+        }
+
+        .form-group label {
+            display: block;
+
+            margin-bottom: 8px;
+
+            font-size: 14px;
+            font-weight: 600;
+
+            color: #344054;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+
+            left: 16px;
+            top: 50%;
+
+            transform: translateY(-50%);
+
+            font-size: 18px;
+
+            color: #758195;
+
+            pointer-events: none;
+        }
+
+        .form-group input {
+            width: 100%;
+            height: 54px;
+
+            border: 1px solid #d5dae1;
+
+            border-radius: 10px;
+
+            padding:
+                0 46px
+                0 46px;
+
+            font-size: 16px;
+
+            outline: none;
+
+            background: #ffffff;
+
+            transition: 0.2s;
+        }
+
+        .form-group input:focus {
+            border-color: #24649a;
+
+            box-shadow:
+                0 0 0 4px
+                rgba(36, 100, 154, 0.10);
+        }
+
+
+        /* PASSWORD SHOW BUTTON */
+
+        .password-toggle {
+            position: absolute;
+
+            top: 50%;
+            right: 14px;
+
+            transform: translateY(-50%);
+
+            border: none;
+            background: none;
+
+            font-size: 13px;
+            font-weight: 600;
+
+            color: #24649a;
+
+            cursor: pointer;
+        }
+
+
+        /* LOGIN BUTTON */
+
+        .login-button {
+            width: 100%;
+
+            height: 54px;
+
+            margin-top: 8px;
+
+            border: none;
+
+            border-radius: 10px;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #153556,
+                    #236395
+                );
+
+            color: white;
+
+            font-size: 16px;
+            font-weight: 700;
+
+            cursor: pointer;
+
+            transition: 0.2s;
+
+            box-shadow:
+                0 8px 20px
+                rgba(21, 53, 86, 0.20);
+        }
+
+        .login-button:hover {
+            transform:
+                translateY(-1px);
+
+            box-shadow:
+                0 12px 25px
+                rgba(21, 53, 86, 0.28);
+        }
+
+
+        /* SECURITY TEXT */
+
+        .security-note {
+            margin-top: 25px;
+
+            text-align: center;
+
+            font-size: 12px;
+
+            line-height: 1.6;
+
+            color: #8993a4;
+        }
+
+
+        /* MOBILE */
+
+        @media screen and (max-width: 768px) {
+
+            body {
+                padding: 0;
+
+                background: #ffffff;
+            }
+
+            .login-container {
+                min-height: 100vh;
+
+                border-radius: 0;
+
+                grid-template-columns: 1fr;
+
+                box-shadow: none;
+            }
+
+            .brand-section {
+                min-height: 245px;
+
+                padding: 35px 28px;
+            }
+
+            .erp-logo {
+                width: 55px;
+                height: 55px;
+
+                margin-bottom: 18px;
+
+                font-size: 20px;
+            }
+
+            .brand-section h1 {
+                font-size: 32px;
+            }
+
+            .company-name {
+                font-size: 15px;
+
+                margin-bottom: 12px;
+            }
+
+            .brand-description {
+                font-size: 14px;
+            }
+
+            .system-items,
+            .brand-footer {
+                display: none;
+            }
+
+            .login-section {
+                padding:
+                    38px 26px
+                    45px;
+            }
+
+            .login-section h2 {
+                font-size: 27px;
+            }
+
+            .login-subtitle {
+                margin-bottom: 28px;
+            }
+        }
+
+
+        @media screen and (max-width: 380px) {
+
+            .brand-section {
+                padding:
+                    28px 22px;
+            }
+
+            .login-section {
+                padding:
+                    32px 20px;
+            }
+        }
+
+    </style>
+</head>
+
+
+<body>
+
+    <div class="login-container">
+
+
+        <!-- LEFT BRANDING -->
+
+        <section class="brand-section">
+
+            <div class="brand-content">
+
+                <div class="erp-logo">
+                    SHF
+                </div>
+
+                <h1>SHF ERP</h1>
+
+                <div class="company-name">
+                    STRUCTION HIGH FLOW LLP
+                </div>
+
+                <div class="brand-description">
+                    Enterprise Resource Planning System
+                    for centralized management of
+                    projects, work orders, materials,
+                    employees, billing and payments.
+                </div>
+
+
+                <div class="system-items">
+
+                    <div class="system-item">
+                        <div class="check-icon">✓</div>
+                        Project & Work Order Management
+                    </div>
+
+                    <div class="system-item">
+                        <div class="check-icon">✓</div>
+                        Material & Inventory Control
+                    </div>
+
+                    <div class="system-item">
+                        <div class="check-icon">✓</div>
+                        Billing & Payment Management
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="brand-footer">
+                SHF Digital Enterprise System
+            </div>
+
+        </section>
