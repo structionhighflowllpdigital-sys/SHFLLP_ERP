@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}
+User Management | SHF ERP
+{% endblock %}
+
+{% block heading %}
+User Management
+{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+
+    <h2>Create New User</h2>
+
+    <form method="post">
+
+        <p>
+            <label>Username</label><br>
+            <input
+                type="text"
+                name="username"
+                required>
+        </p>
+
+        <p>
+            <label>Password</label><br>
+            <input
+                type="password"
+                name="password"
+                minlength="6"
+                required>
+        </p>
+
+        <p>
+            <label>Role</label><br>
+
+            <select
+                name="role"
+                required>
+
+                <option value="Admin">
+                    Admin
+                </option>
+
+                <option value="Project Manager">
+                    Project Manager
+                </option>
+
+                <option value="Accounts">
+                    Accounts
+                </option>
+
+                <option value="Store">
+                    Store
+                </option>
+
+                <option value="Site User">
+                    Site User
+                </option>
+
+            </select>
+        </p>
+
+        <button
+            type="submit"
+            class="primary">
+
+            Create User
+
+        </button>
+
+    </form>
+
+</div>
+
+
+<div class="panel">
+
+    <h2>ERP Users</h2>
+
+    <table>
+
+        <thead>
+
+            <tr>
+                <th>Username</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+        {% for user in users %}
+
+            <tr>
+
+                <td>
+                    {{ user["username"] }}
+                </td>
+
+                <td>
+                    {{ user["role"] }}
+                </td>
+
+                <td>
+
+                    {% if user["active"] %}
+
+                        Active
+
+                    {% else %}
+
+                        Inactive
+
+                    {% endif %}
+
+                </td>
+
+                <td>
+
+                    {% if user["username"] != "admin" %}
+
+                    <form
+                        method="post"
+                        action="{{ url_for(
+                            'toggle_user',
+                            user_id=user['id']
+                        ) }}"
+                        style="display:inline">
+
+                        <button type="submit">
+
+                            {% if user["active"] %}
+
+                                Disable
+
+                            {% else %}
+
+                                Enable
+
+                            {% endif %}
+
+                        </button>
+
+                    </form>
+
+                    {% endif %}
+
+
+                    <form
+                        method="post"
+                        action="{{ url_for(
+                            'reset_user_password',
+                            user_id=user['id']
+                        ) }}"
+                        style="
+                            display:inline-block;
+                            margin-top:8px;
+                        ">
+
+                        <input
+                            type="password"
+                            name="new_password"
+                            placeholder="New password"
+                            minlength="6"
+                            required>
+
+                        <button type="submit">
+                            Change Password
+                        </button>
+
+                    </form>
+
+                </td>
+
+            </tr>
+
+        {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+
+{% endblock %}
