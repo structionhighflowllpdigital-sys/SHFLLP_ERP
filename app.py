@@ -128,6 +128,9 @@ def init_db():
             qty DOUBLE PRECISION DEFAULT 0,
             rate DOUBLE PRECISION DEFAULT 0,
             gst_percent DOUBLE PRECISION DEFAULT 0,
+            taxable_amount DOUBLE PRECISION DEFAULT 0,
+            gst_amount DOUBLE PRECISION DEFAULT 0,
+            total_amount DOUBLE PRECISION DEFAULT 0,
             location TEXT,
             remarks TEXT
         )""",
@@ -183,6 +186,15 @@ def init_db():
 
     if not column_exists(conn, "materials", "gst_percent"):
         execute(conn, "ALTER TABLE materials ADD COLUMN gst_percent DOUBLE PRECISION DEFAULT 0")
+
+    if not column_exists(conn, "materials", "taxable_amount"):
+        execute(conn, "ALTER TABLE materials ADD COLUMN taxable_amount DOUBLE PRECISION DEFAULT 0")
+
+    if not column_exists(conn, "materials", "gst_amount"):
+        execute(conn, "ALTER TABLE materials ADD COLUMN gst_amount DOUBLE PRECISION DEFAULT 0")
+
+    if not column_exists(conn, "materials", "total_amount"):
+        execute(conn, "ALTER TABLE materials ADD COLUMN total_amount DOUBLE PRECISION DEFAULT 0")
 
     user = execute(
         conn,
@@ -720,6 +732,21 @@ MODULES = {
                 "number"
             ),
             (
+                "taxable_amount",
+                "Taxable Amount",
+                "number"
+            ),
+            (
+                "gst_amount",
+                "GST Amount",
+                "number"
+            ),
+            (
+                "total_amount",
+                "Total Including GST",
+                "number"
+            ),
+            (
                 "location",
                 "Store / Site",
                 "text"
@@ -1010,6 +1037,25 @@ def module(slug):
                     val = 0
 
             vals.append(val)
+
+        # Material totals are calculated automatically on the server.
+        if slug == "materials":
+            values = dict(zip(cols, vals))
+            qty = float(values.get("qty") or 0)
+            rate = float(values.get("rate") or 0)
+            gst_percent = float(values.get("gst_percent") or 0)
+
+            taxable_amount = round(qty * rate, 2)
+            gst_amount = round(taxable_amount * gst_percent / 100, 2)
+            total_amount = round(taxable_amount + gst_amount, 2)
+
+            for calculated_name, calculated_value in (
+                ("taxable_amount", taxable_amount),
+                ("gst_amount", gst_amount),
+                ("total_amount", total_amount),
+            ):
+                if calculated_name in cols:
+                    vals[cols.index(calculated_name)] = calculated_value
 
         try:
 
