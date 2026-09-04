@@ -226,6 +226,30 @@
         gap: 10px;
     }
 
+    .wo-material-box {
+        grid-column: 1 / -1;
+        border: 1px solid #d0d5dd;
+        border-radius: 10px;
+        padding: 12px;
+        background: #f8fafc;
+    }
+    .wo-material-title {
+        font-weight: 800;
+        color: #153556;
+        margin-bottom: 10px;
+    }
+    .wo-material-scroll { overflow-x: auto; }
+    .wo-material-table { width: 100%; min-width: 980px; border-collapse: collapse; }
+    .wo-material-table th, .wo-material-table td {
+        border: 1px solid #d0d5dd; padding: 6px; font-size: 12px;
+    }
+    .wo-material-table th { background: #eef3f8; }
+    .wo-material-table input, .wo-material-table select {
+        width: 100%; min-height: 36px; padding: 5px; border: 1px solid #d0d5dd; border-radius: 5px;
+    }
+    .wo-material-summary { margin-top: 10px; text-align: right; font-weight: 700; line-height: 1.8; }
+    .remove-material { border:0; background:#fff0f0; color:#b42318; border-radius:5px; padding:7px 9px; cursor:pointer; }
+
     @media screen and (max-width: 768px) {
         .module-toolbar {
             align-items: stretch;
@@ -551,6 +575,30 @@
 
                 {% endfor %}
 
+                {% if slug == "work-orders" %}
+                <div class="wo-material-box">
+                    <div class="wo-material-title">MATERIAL / INVENTORY DETAILS</div>
+                    <div class="wo-material-scroll">
+                        <table class="wo-material-table">
+                            <thead>
+                                <tr>
+                                    <th>Material</th><th>Item Code</th><th>HSN/SAC</th>
+                                    <th>Unit</th><th>Qty</th><th>Rate</th><th>GST %</th>
+                                    <th>Taxable</th><th>GST Amount</th><th>Total</th><th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="woMaterialBody"></tbody>
+                        </table>
+                    </div>
+                    <button type="button" class="btn" style="margin-top:10px" onclick="addMaterialRow()">+ Add Material</button>
+                    <div class="wo-material-summary">
+                        Material Taxable: ₹ <span id="woMatTaxable">0.00</span><br>
+                        GST: ₹ <span id="woMatGST">0.00</span><br>
+                        Grand Total: ₹ <span id="woMatTotal">0.00</span>
+                    </div>
+                </div>
+                {% endif %}
+
             </div>
 
         </div>
@@ -578,6 +626,86 @@
 </dialog>
 
 <script>
+{% if slug == "work-orders" %}
+const woMaterials = {{ materials|tojson }};
+
+function materialOptions() {
+    let html = '<option value="">-- Select Material --</option>';
+    woMaterials.forEach(function(m) {
+        html += `<option value="${m.id}">${m.item_code} - ${m.item_name}</option>`;
+    });
+    return html;
+}
+
+function addMaterialRow() {
+    const body = document.getElementById("woMaterialBody");
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+        <td><select name="wo_material_id[]" class="wo-mat-select" onchange="fillMaterialRow(this)">${materialOptions()}</select></td>
+        <td class="m-code">-</td><td class="m-hsn">-</td><td class="m-unit">-</td>
+        <td><input name="wo_material_qty[]" class="m-qty" type="number" step="any" value="1" oninput="calcMaterialRows()"></td>
+        <td class="m-rate">0.00</td><td class="m-gstp">0</td><td class="m-tax">0.00</td>
+        <td class="m-gst">0.00</td><td class="m-total">0.00</td>
+        <td><button type="button" class="remove-material" onclick="this.closest('tr').remove();calcMaterialRows()">×</button></td>`;
+    body.appendChild(tr);
+}
+
+function fillMaterialRow(select) {
+    const tr = select.closest("tr");
+    const m = woMaterials.find(x => String(x.id) === String(select.value));
+    if (!m) {
+        tr.querySelector(".m-code").textContent = "-";
+        tr.querySelector(".m-hsn").textContent = "-";
+        tr.querySelector(".m-unit").textContent = "-";
+        tr.querySelector(".m-rate").textContent = "0.00";
+        tr.querySelector(".m-gstp").textContent = "0";
+    } else {
+        tr.querySelector(".m-code").textContent = m.item_code || "-";
+        tr.querySelector(".m-hsn").textContent = m.hsn_code || "-";
+        tr.querySelector(".m-unit").textContent = m.unit || "-";
+        tr.querySelector(".m-rate").textContent = Number(m.rate || 0).toFixed(2);
+        tr.querySelector(".m-gstp").textContent = Number(m.gst_percent || 0).toFixed(2);
+    }
+    calcMaterialRows();
+}
+
+function calcMaterialRows() {
+    let taxableSum = 0, gstSum = 0, totalSum = 0;
+    document.querySelectorAll("#woMaterialBody tr").forEach(function(tr) {
+        const select = tr.querySelector(".wo-mat-select");
+        const m = woMaterials.find(x => String(x.id) === String(select.value));
+        const qty = parseFloat(tr.querySelector(".m-qty").value) || 0;
+        const rate = m ? (parseFloat(m.rate) || 0) : 0;
+        const gstp = m ? (parseFloat(m.gst_percent) || 0) : 0;
+        const taxable = qty * rate;
+        const gst = taxable * gstp / 100;
+        const total = taxable + gst;
+        tr.querySelector(".m-tax").textContent = taxable.toFixed(2);
+        tr.querySelector(".m-gst").textContent = gst.toFixed(2);
+        tr.querySelector(".m-total").textContent = total.toFixed(2);
+        taxableSum += taxable; gstSum += gst; totalSum += total;
+    });
+    document.getElementById("woMatTaxable").textContent = taxableSum.toFixed(2);
+    document.getElementById("woMatGST").textContent = gstSum.toFixed(2);
+    document.getElementById("woMatTotal").textContent = totalSum.toFixed(2);
+
+    if (document.querySelector("#woMaterialBody .wo-mat-select")) {
+        const cv = document.getElementById("contract_value");
+        const ga = document.getElementById("gst_amount");
+        const ta = document.getElementById("total_amount");
+        const gp = document.getElementById("gst_percent");
+        if (cv) cv.value = taxableSum.toFixed(2);
+        if (ga) ga.value = gstSum.toFixed(2);
+        if (ta) ta.value = totalSum.toFixed(2);
+        if (gp) gp.value = taxableSum ? (gstSum / taxableSum * 100).toFixed(2) : "0.00";
+    }
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    addMaterialRow();
+});
+{% endif %}
+
 (function () {
     function numberValue(id) {
         const el = document.getElementById(id);
