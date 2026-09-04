@@ -75,6 +75,13 @@
             <a href="{{ url_for('reports') }}">
                 Reports
             </a>
+            {% if session.get('role') == 'Admin' %}
+
+<a href="{{ url_for('users') }}">
+    User Management
+</a>
+
+{% endif %}
         </nav>
 
     </aside>
