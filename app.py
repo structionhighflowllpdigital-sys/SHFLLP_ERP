@@ -79,10 +79,6 @@ def init_db():
             start_date TEXT,
             end_date TEXT,
             contract_value DOUBLE PRECISION DEFAULT 0,
-            vendor_name TEXT,
-            vendor_gst_no TEXT,
-            vendor_pan_no TEXT,
-            gst_percent DOUBLE PRECISION DEFAULT 0,
             status TEXT DEFAULT 'Active',
             remarks TEXT
         )""",
@@ -108,7 +104,6 @@ def init_db():
             contact TEXT,
             email TEXT,
             gst_no TEXT,
-            pan_no TEXT,
             bank_details TEXT,
             status TEXT DEFAULT 'Active',
             remarks TEXT
@@ -181,22 +176,6 @@ def init_db():
             "ALTER TABLE users ADD COLUMN active INTEGER NOT NULL DEFAULT 1"
         )
 
-    upgrades = [
-        ("vendors", "pan_no", "TEXT"),
-        ("work_orders", "vendor_name", "TEXT"),
-        ("work_orders", "vendor_gst_no", "TEXT"),
-        ("work_orders", "vendor_pan_no", "TEXT"),
-        ("work_orders", "gst_percent", "DOUBLE PRECISION DEFAULT 0"),
-    ]
-
-    for table_name, column_name, column_type in upgrades:
-        if not column_exists(conn, table_name, column_name):
-            execute(
-                conn,
-                f"ALTER TABLE {table_name} "
-                f"ADD COLUMN {column_name} {column_type}"
-            )
-
     user = execute(
         conn,
         "SELECT * FROM users WHERE username='admin'"
@@ -220,79 +199,6 @@ def init_db():
 
     conn.commit()
     conn.close()
-
-
-# =========================================================
-# INDIAN CURRENCY AMOUNT IN WORDS
-# =========================================================
-
-_ONES = [
-    "", "One", "Two", "Three", "Four", "Five", "Six", "Seven",
-    "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen",
-    "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen",
-    "Nineteen"
-]
-
-_TENS = [
-    "", "", "Twenty", "Thirty", "Forty", "Fifty",
-    "Sixty", "Seventy", "Eighty", "Ninety"
-]
-
-
-def _two_digits(n):
-    if n < 20:
-        return _ONES[n]
-    return _TENS[n // 10] + (" " + _ONES[n % 10] if n % 10 else "")
-
-
-def _three_digits(n):
-    parts = []
-    if n >= 100:
-        parts.append(_ONES[n // 100] + " Hundred")
-        n %= 100
-    if n:
-        parts.append(_two_digits(n))
-    return " ".join(parts)
-
-
-def number_to_indian_words(value):
-    try:
-        amount = round(float(value or 0), 2)
-    except (TypeError, ValueError):
-        amount = 0.0
-
-    rupees = int(amount)
-    paise = int(round((amount - rupees) * 100))
-
-    if rupees == 0:
-        words = "Zero"
-    else:
-        parts = []
-        crore = rupees // 10000000
-        rupees %= 10000000
-        lakh = rupees // 100000
-        rupees %= 100000
-        thousand = rupees // 1000
-        rupees %= 1000
-
-        if crore:
-            parts.append(_three_digits(crore) + " Crore")
-        if lakh:
-            parts.append(_three_digits(lakh) + " Lakh")
-        if thousand:
-            parts.append(_three_digits(thousand) + " Thousand")
-        if rupees:
-            parts.append(_three_digits(rupees))
-
-        words = " ".join(parts)
-
-    result = words + " Indian Rupees"
-    if paise:
-        result += " And " + _two_digits(paise) + " Paise"
-    return result + " Only"
-
-
-app.jinja_env.filters["inr_words"] = number_to_indian_words
 
 
 # =========================================================
@@ -589,27 +495,7 @@ MODULES = {
             ),
             (
                 "contract_value",
-                "Basic / Taxable Value",
-                "number"
-            ),
-            (
-                "vendor_name",
-                "Contractor / Vendor Name",
-                "text"
-            ),
-            (
-                "vendor_gst_no",
-                "Vendor GSTIN",
-                "text"
-            ),
-            (
-                "vendor_pan_no",
-                "Vendor PAN",
-                "text"
-            ),
-            (
-                "gst_percent",
-                "GST %",
+                "Contract Value",
                 "number"
             ),
             (
@@ -719,11 +605,6 @@ MODULES = {
             (
                 "gst_no",
                 "GST No.",
-                "text"
-            ),
-            (
-                "pan_no",
-                "PAN No.",
                 "text"
             ),
             (
