@@ -46,8 +46,35 @@
     </table>
 
     <div class="section-title">SCOPE / ORDER DETAILS</div>
-<table class="items"><thead><tr><th>Sr.No.</th><th>Work / Service Description</th><th>Qty.</th><th>UOM</th><th>Rate (₹)</th><th>Amount (₹)</th></tr></thead><tbody><tr><td class="center">1</td><td><b>{{ wo.work_name or '-' }}</b>{% if wo.remarks %}<div style="margin-top:5px">{{ wo.remarks }}</div>{% endif %}</td><td class="center">1</td><td class="center">Job</td><td class="right">{{ "{:,.2f}".format(wo.contract_value or 0) }}</td><td class="right">{{ "{:,.2f}".format(wo.contract_value or 0) }}</td></tr></tbody></table>
-<table><tr><td class="label">Start Date</td><td>{{ wo.start_date or '-' }}</td><td class="label">End Date</td><td>{{ wo.end_date or '-' }}</td></tr><tr><td colspan="3" class="right bold">Total Work Order Value</td><td class="right bold">₹ {{ "{:,.2f}".format(wo.contract_value or 0) }}</td></tr></table>
+<table class="items">
+<thead><tr><th>Sr.</th><th>Material / Work Description</th><th>HSN/SAC</th><th>Qty</th><th>UOM</th><th>Rate (₹)</th><th>GST %</th><th>Taxable (₹)</th><th>GST (₹)</th><th>Total (₹)</th></tr></thead>
+<tbody>
+{% if items %}
+{% for item in items %}
+<tr>
+<td class="center">{{ loop.index }}</td>
+<td><b>{{ item.item_code or '' }}{% if item.item_code %} - {% endif %}{{ item.item_name }}</b></td>
+<td class="center">{{ item.hsn_code or '-' }}</td>
+<td class="right">{{ "{:,.2f}".format(item.qty or 0) }}</td>
+<td class="center">{{ item.unit or '-' }}</td>
+<td class="right">{{ "{:,.2f}".format(item.rate or 0) }}</td>
+<td class="right">{{ "{:,.2f}".format(item.gst_percent or 0) }}%</td>
+<td class="right">{{ "{:,.2f}".format(item.taxable_amount or 0) }}</td>
+<td class="right">{{ "{:,.2f}".format(item.gst_amount or 0) }}</td>
+<td class="right">{{ "{:,.2f}".format(item.total_amount or 0) }}</td>
+</tr>
+{% endfor %}
+{% else %}
+<tr><td class="center">1</td><td><b>{{ wo.work_name or '-' }}</b>{% if wo.remarks %}<div style="margin-top:5px">{{ wo.remarks }}</div>{% endif %}</td><td class="center">-</td><td class="center">1</td><td class="center">Job</td><td class="right">{{ "{:,.2f}".format(wo.contract_value or 0) }}</td><td class="right">{{ "{:,.2f}".format(wo.gst_percent or 0) }}%</td><td class="right">{{ "{:,.2f}".format(wo.contract_value or 0) }}</td><td class="right">{{ "{:,.2f}".format(wo.gst_amount or 0) }}</td><td class="right">{{ "{:,.2f}".format(wo.total_amount or wo.contract_value or 0) }}</td></tr>
+{% endif %}
+</tbody>
+</table>
+<table>
+<tr><td class="label">Start Date</td><td>{{ wo.start_date or '-' }}</td><td class="label">End Date</td><td>{{ wo.end_date or '-' }}</td></tr>
+<tr><td colspan="3" class="right bold">Taxable Value</td><td class="right bold">₹ {{ "{:,.2f}".format(wo.contract_value or 0) }}</td></tr>
+<tr><td colspan="3" class="right bold">GST Amount</td><td class="right bold">₹ {{ "{:,.2f}".format(wo.gst_amount or 0) }}</td></tr>
+<tr><td colspan="3" class="right bold">Grand Total</td><td class="right bold">₹ {{ "{:,.2f}".format(wo.total_amount or wo.contract_value or 0) }}</td></tr>
+</table>
 <div class="section-title">COMMERCIAL & EXECUTION CONDITIONS</div>
 <div class="terms"><ol><li>The work shall be executed as per approved drawings, specifications, site instructions and applicable safety requirements.</li><li>Any additional or deviation work requires prior written approval from STRUCTION HIGH FLOW LLP.</li><li>Measurement and certification of completed work shall be the basis for billing and payment.</li><li>All statutory compliances, labour safety requirements and site discipline applicable to the assigned scope shall be maintained.</li><li>Invoices / bills shall clearly mention this Work Order number and project details.</li><li>Defective or sub-standard work shall be rectified within the instructed period where attributable to the executing party.</li><li>Completion dates are subject to approved site access, drawings, materials and project dependencies.</li></ol></div>
 <div class="sign-grid"><div class="sign-box"><div class="bold">Accepted By Contractor / Vendor</div><div class="sign-space"></div><div>Name: ______________________________</div><div>Date: _______________________________</div><div>Signature & Stamp</div></div><div class="sign-box"><div class="bold">For STRUCTION HIGH FLOW LLP</div><div class="sign-space"></div><div class="bold">Authorized Signatory</div></div></div>
