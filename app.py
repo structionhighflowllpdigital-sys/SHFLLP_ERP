@@ -94,6 +94,10 @@ def init_db():
             start_date TEXT,
             end_date TEXT,
             contract_value DOUBLE PRECISION DEFAULT 0,
+            vendor_id INTEGER,
+            gst_percent DOUBLE PRECISION DEFAULT 0,
+            gst_amount DOUBLE PRECISION DEFAULT 0,
+            total_amount DOUBLE PRECISION DEFAULT 0,
             status TEXT DEFAULT 'Active',
             remarks TEXT
         )""",
@@ -104,6 +108,7 @@ def init_db():
             contact TEXT,
             email TEXT,
             gst_no TEXT,
+            pan_no TEXT,
             bank_details TEXT,
             status TEXT DEFAULT 'Active',
             remarks TEXT
@@ -195,6 +200,21 @@ def init_db():
 
     if not column_exists(conn, "materials", "total_amount"):
         execute(conn, "ALTER TABLE materials ADD COLUMN total_amount DOUBLE PRECISION DEFAULT 0")
+
+    if not column_exists(conn, "vendors", "pan_no"):
+        execute(conn, "ALTER TABLE vendors ADD COLUMN pan_no TEXT")
+
+    if not column_exists(conn, "work_orders", "vendor_id"):
+        execute(conn, "ALTER TABLE work_orders ADD COLUMN vendor_id INTEGER")
+
+    if not column_exists(conn, "work_orders", "gst_percent"):
+        execute(conn, "ALTER TABLE work_orders ADD COLUMN gst_percent DOUBLE PRECISION DEFAULT 0")
+
+    if not column_exists(conn, "work_orders", "gst_amount"):
+        execute(conn, "ALTER TABLE work_orders ADD COLUMN gst_amount DOUBLE PRECISION DEFAULT 0")
+
+    if not column_exists(conn, "work_orders", "total_amount"):
+        execute(conn, "ALTER TABLE work_orders ADD COLUMN total_amount DOUBLE PRECISION DEFAULT 0")
 
     user = execute(
         conn,
@@ -581,8 +601,28 @@ MODULES = {
                 "date"
             ),
             (
+                "vendor_id",
+                "Contractor / Vendor",
+                "vendor"
+            ),
+            (
                 "contract_value",
-                "Contract Value",
+                "Basic Contract Value",
+                "number"
+            ),
+            (
+                "gst_percent",
+                "GST %",
+                "number"
+            ),
+            (
+                "gst_amount",
+                "GST Amount",
+                "number"
+            ),
+            (
+                "total_amount",
+                "Total Including GST",
                 "number"
             ),
             (
@@ -625,6 +665,11 @@ MODULES = {
             (
                 "gst_no",
                 "GST No.",
+                "text"
+            ),
+            (
+                "pan_no",
+                "PAN No.",
                 "text"
             ),
             (
@@ -1057,6 +1102,21 @@ def module(slug):
                 if calculated_name in cols:
                     vals[cols.index(calculated_name)] = calculated_value
 
+        # Work Order GST totals are calculated automatically on the server.
+        if slug == "work-orders":
+            values = dict(zip(cols, vals))
+            basic_value = float(values.get("contract_value") or 0)
+            gst_percent = float(values.get("gst_percent") or 0)
+            gst_amount = round(basic_value * gst_percent / 100, 2)
+            total_amount = round(basic_value + gst_amount, 2)
+
+            for calculated_name, calculated_value in (
+                ("gst_amount", gst_amount),
+                ("total_amount", total_amount),
+            ):
+                if calculated_name in cols:
+                    vals[cols.index(calculated_name)] = calculated_value
+
         try:
 
             sql = (
@@ -1116,6 +1176,20 @@ def module(slug):
         """
     ).fetchall()
 
+    vendors = execute(conn,
+        """
+        SELECT
+            id,
+            vendor_code,
+            vendor_name,
+            gst_no,
+            pan_no
+        FROM vendors
+        WHERE status='Active'
+        ORDER BY vendor_name
+        """
+    ).fetchall()
+
     conn.close()
 
     return render_template(
@@ -1125,7 +1199,8 @@ def module(slug):
         fields=fields,
         slug=slug,
         rows=rows,
-        projects=projects
+        projects=projects,
+        vendors=vendors
     )
 
 
@@ -1204,10 +1279,16 @@ def print_work_order(id):
         SELECT
             w.*,
             p.project_code,
-            p.project_name
+            p.project_name,
+            v.vendor_code,
+            v.vendor_name,
+            v.gst_no AS vendor_gst_no,
+            v.pan_no AS vendor_pan_no
         FROM work_orders w
         LEFT JOIN projects p
         ON p.id=w.project_id
+        LEFT JOIN vendors v
+        ON v.id=w.vendor_id
         WHERE w.id=%s
         """,
         (id,)
