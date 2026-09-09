@@ -231,6 +231,73 @@ def init_db():
     if not column_exists(conn, "work_orders", "total_amount"):
         execute(conn, "ALTER TABLE work_orders ADD COLUMN total_amount DOUBLE PRECISION DEFAULT 0")
 
+
+    # ---------------------------------------------------------
+    # SAFE MIGRATIONS FOR OLDER ERP DATABASES
+    # These checks preserve existing data and only add columns
+    # that are missing from older Render/PostgreSQL databases.
+    # ---------------------------------------------------------
+
+    employee_columns = [
+        ("emp_code", "TEXT"),
+        ("name", "TEXT"),
+        ("designation", "TEXT"),
+        ("phone", "TEXT"),
+        ("joining_date", "TEXT"),
+        ("salary", "DOUBLE PRECISION DEFAULT 0"),
+        ("project_id", "INTEGER"),
+        ("status", "TEXT DEFAULT 'Active'"),
+    ]
+
+    expense_columns = [
+        ("expense_date", "TEXT"),
+        ("project_id", "INTEGER"),
+        ("category", "TEXT"),
+        ("description", "TEXT"),
+        ("amount", "DOUBLE PRECISION DEFAULT 0"),
+        ("paid_to", "TEXT"),
+        ("payment_mode", "TEXT"),
+        ("remarks", "TEXT"),
+    ]
+
+    bill_columns = [
+        ("bill_no", "TEXT"),
+        ("bill_date", "TEXT"),
+        ("project_id", "INTEGER"),
+        ("bill_type", "TEXT"),
+        ("party_name", "TEXT"),
+        ("gross_amount", "DOUBLE PRECISION DEFAULT 0"),
+        ("deductions", "DOUBLE PRECISION DEFAULT 0"),
+        ("net_amount", "DOUBLE PRECISION DEFAULT 0"),
+        ("status", "TEXT DEFAULT 'Pending'"),
+        ("remarks", "TEXT"),
+    ]
+
+    payment_columns = [
+        ("payment_no", "TEXT"),
+        ("payment_date", "TEXT"),
+        ("project_id", "INTEGER"),
+        ("party_name", "TEXT"),
+        ("amount", "DOUBLE PRECISION DEFAULT 0"),
+        ("mode", "TEXT"),
+        ("reference_no", "TEXT"),
+        ("type", "TEXT"),
+        ("remarks", "TEXT"),
+    ]
+
+    for table_name, columns in (
+        ("employees", employee_columns),
+        ("expenses", expense_columns),
+        ("bills", bill_columns),
+        ("payments", payment_columns),
+    ):
+        for column_name, column_sql in columns:
+            if not column_exists(conn, table_name, column_name):
+                execute(
+                    conn,
+                    f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_sql}"
+                )
+
     user = execute(
         conn,
         "SELECT * FROM users WHERE username='admin'"
@@ -1244,7 +1311,39 @@ def module(slug):
                 "danger"
             )
 
-        conn.close()
+        except psycopg2.Error as exc:
+
+            conn.rollback()
+
+            app.logger.exception(
+                "Database error while saving module %s",
+                slug
+            )
+
+            flash(
+                "Database error while saving this record. "
+                "The transaction was cancelled safely. "
+                "Please try again after the latest deployment.",
+                "danger"
+            )
+
+        except Exception as exc:
+
+            conn.rollback()
+
+            app.logger.exception(
+                "Unexpected error while saving module %s",
+                slug
+            )
+
+            flash(
+                "Unexpected error while saving this record. "
+                "No data was deleted.",
+                "danger"
+            )
+
+        finally:
+            conn.close()
 
         return redirect(
             url_for(
